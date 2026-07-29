@@ -3,290 +3,85 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>算法创新方法详情</title>
+<title>DFJSP多群体ABC算法 — 实验结果对比</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background-color: #F5F0EB;
-    color: #1A1A1A;
-    font-family: "Microsoft YaHei", "SimHei", sans-serif;
-    line-height: 1.8;
-    padding: 40px 20px;
-  }
-  .container {
-    max-width: 1100px;
-    margin: 0 auto;
-  }
-  h1 {
-    font-size: 36px;
-    text-align: center;
-    color: #1A1A1A;
-    margin-bottom: 10px;
-    letter-spacing: 4px;
-  }
-  .subtitle {
-    text-align: center;
-    color: #595959;
-    font-size: 16px;
-    margin-bottom: 50px;
-    border-bottom: 2px solid #BFBFBF;
-    padding-bottom: 20px;
-  }
-  .section {
-    margin-bottom: 60px;
-    position: relative;
-  }
-  .section::before {
-    content: "";
-    position: absolute;
-    top: -20px;
-    left: 0;
-    width: 80px;
-    height: 4px;
-    background: #1A1A1A;
-    opacity: 0.3;
-  }
-  .section-title {
-    font-size: 28px;
-    font-weight: bold;
-    color: #1A1A1A;
-    margin-bottom: 8px;
-  }
-  .section-meta {
-    font-size: 14px;
-    color: #595959;
-    margin-bottom: 24px;
-    padding-left: 4px;
-  }
-  .section-meta span {
-    display: inline-block;
-    margin-right: 16px;
-  }
-  .content-block {
-    background: rgba(255,255,255,0.6);
-    border-left: 3px solid #8B8B8B;
-    padding: 20px 28px;
-    margin-bottom: 20px;
-    border-radius: 0 4px 4px 0;
-  }
-  .content-block h3 {
-    font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 10px;
-    color: #2C2C2C;
-  }
-  .content-block p, .content-block ul {
-    font-size: 15px;
-    color: #3A3A3A;
-  }
-  .content-block ul {
-    list-style: none;
-    padding-left: 0;
-  }
-  .content-block ul li {
-    position: relative;
-    padding-left: 18px;
-    margin-bottom: 6px;
-  }
-  .content-block ul li::before {
-    content: "—";
-    position: absolute;
-    left: 0;
-    color: #8B8B8B;
-  }
-  .tag {
-    display: inline-block;
-    background: #1A1A1A;
-    color: #F5F0EB;
-    padding: 2px 10px;
-    font-size: 12px;
-    border-radius: 2px;
-    margin-right: 6px;
-  }
-  .footer {
-    text-align: center;
-    color: #8B8B8B;
-    font-size: 13px;
-    padding-top: 30px;
-    border-top: 1px solid #BFBFBF;
-    margin-top: 40px;
-  }
-  /* === Comparison Table === */
-  .compare-section {
-    margin-bottom: 60px;
-    position: relative;
-  }
-  .compare-section::before {
-    content: "";
-    position: absolute;
-    top: -20px;
-    left: 0;
-    width: 120px;
-    height: 4px;
-    background: #1A1A1A;
-    opacity: 0.3;
-  }
-  .compare-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: rgba(255,255,255,0.6);
-    font-size: 14px;
-    margin-top: 20px;
-  }
-  .compare-table th, .compare-table td {
-    border: 1px solid #BFBFBF;
-    padding: 12px 14px;
-    text-align: left;
-    vertical-align: top;
-  }
-  .compare-table th {
-    background: #1A1A1A;
-    color: #F5F0EB;
-    font-weight: bold;
-    text-align: center;
-    font-size: 15px;
-  }
-  .compare-table tr:nth-child(even) {
-    background: rgba(255,255,255,0.3);
-  }
-  .compare-table td:first-child {
-    font-weight: bold;
-    color: #2C2C2C;
-    white-space: nowrap;
-    width: 120px;
-    text-align: center;
-  }
-  .algo-label {
-    display: inline-block;
-    font-weight: bold;
-    padding: 2px 8px;
-    border-radius: 2px;
-    font-size: 13px;
-  }
-  .algo-mds { background: #4A4A4A; color: #FFF; }
-  .algo-rld { background: #7A7A7A; color: #FFF; }
-  .algo-rkg { background: #B0B0B0; color: #1A1A1A; }
-  @media (max-width: 600px) {
-    h1 { font-size: 26px; }
-    .section-title { font-size: 22px; }
-    body { padding: 20px 10px; }
-    .compare-table { font-size: 12px; }
-    .compare-table th, .compare-table td { padding: 8px 6px; }
-  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:"Microsoft YaHei","SimHei",sans-serif;background:#f5f0eb;color:#333;line-height:1.8}
+  .container{max-width:1000px;margin:0 auto;padding:40px 30px}
+  h1{font-size:28px;color:#333;text-align:center;padding-bottom:15px;border-bottom:2px solid #bfbfbf;margin-bottom:40px}
+  h2{font-size:22px;color:#333;margin-top:40px;margin-bottom:16px;padding-left:12px;border-left:4px solid #a6a6a6}
+  h3{font-size:18px;color:#595959;margin-top:24px;margin-bottom:10px}
+  p{margin-bottom:12px;color:#595959;font-size:15px}
+  .card{background:#fff;border-radius:8px;padding:24px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+  .boxplot-container{text-align:center;margin:24px 0}
+  .boxplot-container img{max-width:100%;height:auto;border:1px solid #d9d9d9;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+  .legend-row{display:flex;gap:20px;justify-content:center;margin:16px 0;flex-wrap:wrap}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:14px;color:#595959}
+  .legend-dot{width:16px;height:16px;border-radius:3px;display:inline-block}
+  footer{margin-top:60px;padding-top:20px;border-top:1px solid #d9d9d9;text-align:center;color:#a6a6a6;font-size:14px}
+  .nav-links{text-align:center;margin:20px 0;font-size:15px}
+  .nav-links a{color:#595959;margin:0 12px;text-decoration:none;border-bottom:1px dashed #a6a6a6}
+  .nav-links a:hover{border-bottom:1px solid #333}
+  @media(max-width:640px){.container{padding:20px 16px}h1{font-size:22px}}
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>算法创新方法详情</h1>
-  <div class="subtitle">MDS-ABC 算法核心创新点梳理</div>
 
-  <!-- === Innovation Comparison Table === -->
-  <div class="compare-section">
-    <div class="section-title">创新方案比较</div>
-    <div class="section-meta">三大算法核心特征对照</div>
-    <table class="compare-table">
-      <thead>
-        <tr>
-          <th>维度</th>
-          <th><span class="algo-label algo-mds">MDS-ABC</span></th>
-          <th><span class="algo-label algo-rld">RLDABC</span></th>
-          <th><span class="algo-label algo-rkg">RKGA</span></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>解决的问题</td>
-          <td>DFAS-AGVT<br/><small>分布式柔性装配调度<br/>+ AGV运输</small></td>
-          <td>HFSP-BVS<br/><small>混合流水车间调度<br/>+ 批处理 + 变子批</small></td>
-          <td>FJSP-LS<br/><small>柔性作业车间调度<br/>+ 批量流</small></td>
-        </tr>
-        <tr>
-          <td>基础算法</td>
-          <td>人工蜂群 (ABC)</td>
-          <td>离散人工蜂群 (DABC)</td>
-          <td>遗传算法 (GA)</td>
-        </tr>
-        <tr>
-          <td>核心创新</td>
-          <td>多领域搜索（工件/机器/AGV三维协同）</td>
-          <td>Q-learning自适应邻域选择</td>
-          <td>知识引导 + RL增强扰动逃逸</td>
-        </tr>
-        <tr>
-          <td>种群初始化</td>
-          <td>三种状态混合初始化</td>
-          <td>4种子批拆分策略多样化初始化</td>
-          <td>精英解子批方案知识提取</td>
-        </tr>
-        <tr>
-          <td>邻域搜索</td>
-          <td>瓶颈资源识别 → 针对性邻域操作</td>
-          <td>Q-learning动态选择9种邻域操作</td>
-          <td>知识引导的子批方案变异</td>
-        </tr>
-        <tr>
-          <td>局部最优逃逸</td>
-          <td>"修复+再强化"侦察蜂机制</td>
-          <td>双層破坏-重建 + 交叉探索</td>
-          <td>RL选择最优扰动策略</td>
-        </tr>
-        <tr>
-          <td>特色算子</td>
-          <td>瓶颈工厂重分配(O1)<br/>随机扰动重分配(O2)<br/>高适应度工序交叉(O3)</td>
-          <td>双層破坏-重建策略<br/>交叉启发探索</td>
-          <td>子批特征知识引导<br/>状态空间协同生成</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+<h1>DFJSP多群体ABC算法 &mdash; 实验结果对比</h1>
 
-  <!-- Section 1: MDS-ABC -->
-  <div class="section">
-    <div class="section-title">一、MDS-ABC 算法</div>
-    <div class="section-meta">
-      <span>📄 论文：带有AGV小车的分布式柔性装配车间调度研究</span>
-      <span>👤 作者：刘畅</span>
-      <span>📅 2026年1月</span>
-    </div>
+<div class="nav-links">
+  <a href="../index.html">首页：代码重构与创新算法</a>
+  <a href="../comparison/index.html">对比算法复现</a>
+  <a href="index.html">实验结果对比</a>
+</div>
 
-    <div class="content-block">
-      <h3>1. 三种状态混合初始化</h3>
-      <p>提出三种状态混合初始化策略（Three-State Hybrid Initialization），用于生成高质量的初始种群，增强种群多样性：</p>
-      <ul>
-        <li><span class="tag">状态1</span> <b>基于最小完工时间的初始化</b>：设计启发式规则，优先选择加工时间最短的机器与工序组合，生成高质量初始解。</li>
-        <li><span class="tag">状态2</span> <b>基于瓶颈资源的初始化</b>：识别关键瓶颈机器与工序，以瓶颈资源为导向分配工件与工序，平衡各工厂负荷。</li>
-        <li><span class="tag">状态3</span> <b>随机初始化</b>：保留标准ABC的随机初始化机制，兼顾种群多样性，避免过早收敛。</li>
-      </ul>
-    </div>
+<p>基于4种算法（<b>ABC</b>、<b>Q学习</b>、<b>多种群</b>、<b>改进遗传</b>）在fga测试实例上的RPD对比。每种算法在每个实例上独立运行10次。</p>
+<p>RPD计算公式：<code>RPD = (算法Makespan - 全局最优Makespan) / 全局最优Makespan x 100%</code></p>
+<p>全局最优Makespan为所有算法在所有运行中的最优值。</p>
 
-    <div class="content-block">
-      <h3>2. 算法总框架</h3>
-      <p>提出基于多领域搜索的人工蜂群算法（Multi-Domain Search Artificial Bee Colony Algorithm, MDS-ABC），针对DFAS-AGVT问题在原始ABC算法上进行离散化改进。多领域搜索分别作用于<b>工件</b>、<b>机器</b>以及<b>AGV</b>三个方面，进行协同局部强化。</p>
-    </div>
+<div class="legend-row">
+  <div class="legend-item"><span class="legend-dot" style="background:#333333"></span> ABC</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#595959"></span> Q学习</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#808080"></span> 多种群</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#A6A6A6"></span> 改进遗传</div>
+</div>
 
-    <div class="content-block">
-      <h3>3. 引领蜂阶段 — 离散邻域搜索</h3>
-      <p>传统的ABC算法邻域更新公式适用于连续函数，MDS-ABC采用离散型领域搜索，将单一领域搜索扩展为"关键工件 + 关键机器/序列 + AGV瓶颈"的协同局部强化。先识别每个调度方案的瓶颈资源，再有针对性地执行邻域操作。</p>
-    </div>
+<!-- Section: Boxplots -->
+<div class="card">
+<h2>一、RPD箱线图对比</h2>
+<p>箱线图展示各算法10次运行的RPD分布（中位数、四分位数、异常值）。</p>
 
-    <div class="content-block">
-      <h3>4. 跟随蜂阶段 — 三种创新算子</h3>
-      <ul>
-        <li><span class="tag">O1</span> <b>瓶颈工厂重分配算子</b>：自动识别瓶颈工件，将其从当前工厂移除并随机分配到另一个可行工厂，生成新的工厂分配与机器分配。</li>
-        <li><span class="tag">O2</span> <b>随机扰动重分配算子</b>：以均匀概率随机选取一个工件，将其迁移至另一可行工厂并按最短加工时间重分配所有工序，用于打破局部最优。</li>
-        <li><span class="tag">O3</span> <b>高适应度工序序列交叉算子</b>：借鉴进化算法重组思想，在当前食物源与高适应度个体之间对工序序列执行两点顺序交叉，保留工厂与机器分配不变。</li>
-      </ul>
-    </div>
+<h3>小规模实例 (fga1 ~ fga7)</h3>
+<div class="boxplot-container"><img src="../boxplot_small.png" alt="小规模箱线图"></div>
 
-    <div class="content-block">
-      <h3>5. 侦察蜂阶段 — "修复 + 再强化"机制</h3>
-      <p>当蜜源陷入局部最优时，不直接废弃停滞蜜源。先通过校验函数检验解的可行性（工序合法性、机器合法性、AGV/装配异常），检验完成后进入局部搜索，对部分工件重新分配工厂和机器，对工序序列做有限次交换而非全局随机洗牌。</p>
-    </div>
-  </div>
+<h3>中规模实例 (fga20 ~ fga50)</h3>
+<div class="boxplot-container"><img src="../boxplot_medium.png" alt="中规模箱线图"></div>
 
-  <div class="footer">
-    <p>—— 三篇论文创新方法整理 · 2026年6月 ——</p>
-  </div>
+<h3>大规模实例 (fga60 ~ fga100)</h3>
+<div class="boxplot-container"><img src="../boxplot_large.png" alt="大规模箱线图"></div>
+</div>
+
+<!-- Section: Min Bar Charts -->
+<div class="card">
+<h2>二、最小值矩形图对比</h2>
+<p>矩形图展示各算法在每个实例上10次运行的最小Makespan值（与箱线图原理一致，聚焦最优性能）。</p>
+
+<h3>小规模实例 (fga1 ~ fga7)</h3>
+<div class="boxplot-container"><img src="../minbar_small.png" alt="小规模最小值矩形图"></div>
+
+<h3>中规模实例 (fga20 ~ fga50)</h3>
+<div class="boxplot-container"><img src="../minbar_medium.png" alt="中规模最小值矩形图"></div>
+
+<h3>大规模实例 (fga60 ~ fga100)</h3>
+<div class="boxplot-container"><img src="../minbar_large.png" alt="大规模最小值矩形图"></div>
+</div>
+
+<footer>
+  <p>DFJSP多群体ABC算法研究汇报 &mdash; 实验结果对比</p>
+  <p>GitHub 仓库: <a href="https://github.com/LC-make/LC" style="color:#595959;">LC-make/LC</a></p>
+</footer>
+
 </div>
 </body>
 </html>
