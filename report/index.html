@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DFJSP多群体ABC算法 — 代码重构与创新算法</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:"Microsoft YaHei","SimHei",sans-serif;background:#f5f0eb;color:#333;line-height:1.8}
+  .container{max-width:1000px;margin:0 auto;padding:40px 30px}
+  h1{font-size:28px;color:#333;text-align:center;padding-bottom:15px;border-bottom:2px solid #bfbfbf;margin-bottom:40px}
+  h2{font-size:22px;color:#333;margin-top:40px;margin-bottom:16px;padding-left:12px;border-left:4px solid #a6a6a6}
+  h3{font-size:18px;color:#595959;margin-top:24px;margin-bottom:10px}
+  h4{font-size:16px;color:#595959;margin-top:18px;margin-bottom:8px}
+  p{margin-bottom:12px;color:#595959;font-size:15px}
+  ul,ol{margin:8px 0 16px 24px}
+  li{margin-bottom:8px;color:#595959;font-size:15px}
+  .code-block{background:#1e1e1e;border-left:3px solid #808080;padding:14px 18px;margin:12px 0 20px;font-family:"Consolas","Courier New",monospace;font-size:13px;color:#d4d4d4;white-space:pre-wrap;border-radius:0 4px 4px 0;overflow-x:auto}
+  .card{background:#fff;border-radius:8px;padding:24px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+  .tag{display:inline-block;background:#e8e3de;color:#595959;padding:2px 10px;border-radius:3px;font-size:13px;margin-right:6px}
+  table.flow{width:100%;border-collapse:collapse;margin:12px 0 20px;font-size:14px}
+  table.flow th{background:#e8e3de;color:#333;padding:8px 12px;text-align:left;border:1px solid #d9d9d9}
+  table.flow td{padding:8px 12px;border:1px solid #d9d9d9;color:#595959}
+  table.flow tr:nth-child(even){background:#faf8f5}
+  .summary-row{display:flex;gap:16px;margin:12px 0;flex-wrap:wrap}
+  .summary-item{background:#f5f0eb;padding:10px 16px;border-radius:6px;flex:1;min-width:100px;text-align:center}
+  .summary-item .num{font-size:24px;font-weight:bold;display:block}
+  .summary-item .label{font-size:13px;color:#808080}
+  footer{margin-top:60px;padding-top:20px;border-top:1px solid #d9d9d9;text-align:center;color:#a6a6a6;font-size:14px}
+  .nav-links{text-align:center;margin:20px 0;font-size:15px}
+  .nav-links a{color:#595959;margin:0 12px;text-decoration:none;border-bottom:1px dashed #a6a6a6}
+  .nav-links a:hover{border-bottom:1px solid #333}
+  @media(max-width:640px){.container{padding:20px 16px}h1{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>DFJSP多群体ABC算法 &mdash; 代码重构与创新算法</h1>
+
+<div class="nav-links">
+  <a href="index.html">首页：代码重构与创新算法</a>
+  <a href="comparison/index.html">对比算法复现</a>
+  <a href="results/index.html">实验结果对比</a>
+</div>
+
+<!-- Part 1: Code Restructuring -->
+<div class="card">
+<h2>一、代码重构：单主程序 &rarr; 两模块头文件架构</h2>
+<p>原始代码将所有功能集中在一个主程序中，代码耦合度高、可维护性差。重构后拆分为两个独立模块：<code>encoding.h</code>（编码解码）、<code>data_io.h</code>（数据读取），主程序仅负责调用。</p>
+
+<h3>文件结构</h3>
+<div class="code-block">DFJSP_Project/
+ &rlm; main.cpp                  # 主程序入口，调用两个头文件
+ &rlm; encoding.h                # 编码+解码模块（双编码表示 + 解码器）
+ &rlm; data_io.h                 # 数据读取模块（输入解析与参数配置）
+ &rlm; fga/                      # 测试实例文件夹
+     &rlm; fga1.txt
+     &rlm; ...</div>
+
+<h3>encoding.h &mdash; 编码+解码模块</h3>
+<p>该头文件封装了完整的双编码表示与解码调度算法：</p>
+<div class="code-block">// ============================================
+// encoding.h &mdash; 编码+解码模块
+// 双编码表示 + 7步解码调度 + 关键路径分析
+// ============================================
+
+// ----- 编码结构体 FoodSource -----
+struct FoodSource {
+    vector&lt;int&gt; OS;    // Operation Sequence 工序排序
+    vector&lt;int&gt; MS;    // Machine Sequence 机器分配
+    vector&lt;int&gt; AT;    // Assembly Time 装配序列
+    vector&lt;int&gt; jobFactory;  // 工厂分配
+    double fitness;
+    int trial;
+};
+
+// ----- 双编码表示 -----
+// 三向量编码(解码专用): OS + MS + AT
+// 工厂-机器分配(算子专用): jobFactory + machineAssign
+// syncEncoding() 保持两种表示同步
+void syncEncoding(FoodSource&amp; fs);
+
+// ----- 解码器：七步调度生成 -----
+// 1. 初始化机器可用时间表、AGV位置追踪
+// 2. 遍历OS序列逐道调度
+// 3. AGV运输调度（顺路接任务）
+// 4. 机器加工: max(AGV到达, 机器可用)
+// 5. 装配点运输
+// 6. 产品装配（串行）
+// 7. 计算Makespan
+double decodeSchedule(const FoodSource&amp; fs);
+
+// ----- 关键路径分析 -----
+void analyzeCriticalPath();</div>
+
+<h3>data_io.h &mdash; 数据读取模块</h3>
+<p>该头文件独立负责所有数据输入解析与算法参数配置：</p>
+<div class="code-block">// ============================================
+// data_io.h &mdash; 数据读取模块
+// 解析输入文件 + 算法参数配置
+// ============================================
+
+// ----- fga文件解析 -----
+void readFGA(const string&amp; filename);
+// 解析工件数/机器数/工厂划分
+// 读取加工时间、AGV运输时间、产品装配参数
+
+// ----- 算法参数配置 -----
+constexpr int TOTAL_POP_SIZE = 60;
+constexpr int INITIAL_COLONY_SIZE = 20;
+constexpr int MIGRATION_INTERVAL = 30;
+constexpr double MIGRATION_THRESHOLD = 0.05;
+constexpr double EPSILON_GREEDY = 0.4;
+constexpr int LIMIT_MIN = 10, LIMIT_MAX = 50;
+constexpr int MIN_COLONY_SIZE = 6;</div>
+
+<h3>main.cpp &mdash; 主程序调用</h3>
+<div class="code-block">// ============================================
+// main.cpp &mdash; 主程序入口
+// 直接调取两个头文件，模块化清晰
+// ============================================
+
+#include "data_io.h"     // 数据读取模块
+#include "encoding.h"     // 编码+解码模块
+
+int main() {
+    // Step 1: 读取数据
+    readFGA("fga/fga1.txt");
+
+    // Step 2: 初始化种群 (60个食物源)
+    vector&lt;FoodSource&gt; population;
+    initPopulation(population);
+
+    // Step 3: 三异质蜂群初始化
+    // 蜂群A TIME_FIRST (20个体)  [0.6, 0.2, 0.2]
+    // 蜂群B LOAD_BALANCE (20个体) [0.2, 0.6, 0.2]
+    // 蜂群C AGV_SMOOTH (20个体) [0.2, 0.2, 0.6]
+
+    // Step 4: 主循环
+    while (elapsed &lt; stopMs) {
+        employedBeePhase();     // 邻域搜索
+        onlookerBeePhase();     // epsilon-贪婪选算子
+        scoutBeePhase();        // 自适应LIMIT
+        migrationPhase();       // 每30代迁移
+    }
+
+    // Step 5: 输出结果
+    printBestSchedule();
+    outputGanttChart();
+    return 0;
+}</div>
+</div>
+
+<!-- Part 2: Innovation Algorithm -->
+<div class="card">
+<h2>二、创新算法：多群体ABC算法详解</h2>
+<p>基于多群体ABC（Artificial Bee Colony）的分布式柔性作业车间调度（DFJSP）算法，提出三异质蜂群协同进化架构，融合自适应算子选择与关键路径分析。</p>
+
+<h3>1. 数据输入</h3>
+<ul>
+  <li>读取数据文件 fga*.txt</li>
+  <li>解析工件数 / 机器数 / 工厂划分</li>
+  <li>读取加工时间、AGV运输时间、产品装配参数</li>
+</ul>
+
+<h3>2. 双编码表示 (Dual Representation)</h3>
+<table class="flow">
+  <tr><th>编码类型</th><th>用途</th><th>说明</th></tr>
+  <tr><td>三向量编码</td><td>解码专用</td><td>OS(Operation Sequence) + MS(Machine Sequence) + AT(Assembly Time)</td></tr>
+  <tr><td>工厂-机器分配</td><td>算子专用</td><td>jobFactory[j] + machineAssign[j][o] &rarr; <code>syncEncoding()</code> 保持同步</td></tr>
+</table>
+
+<h3>3. 种群初始化 (60个食物源)</h3>
+<table class="flow">
+  <tr><th>比例</th><th>策略</th><th>说明</th></tr>
+  <tr><td>70%</td><td>随机生成</td><td>完全随机分配工厂和机器 &rarr; Fisher-Yates洗牌OS序列</td></tr>
+  <tr><td>15%</td><td>时间优先</td><td>首工序选最短加工时间机器，后续优先同机</td></tr>
+  <tr><td>15%</td><td>交错生成</td><td>首工序选最短时间，后续优先选与下一工序共享的机器</td></tr>
+</table>
+
+<h3>4. 初始化三个异质蜂群</h3>
+<table class="flow">
+  <tr><th>蜂群</th><th>策略</th><th>规模</th><th>权重</th><th>说明</th></tr>
+  <tr><td>蜂群A</td><td>TIME_FIRST</td><td>20</td><td>[0.6, 0.2, 0.2]</td><td>每工序选加工时间最短的机器</td></tr>
+  <tr><td>蜂群B</td><td>LOAD_BALANCE</td><td>20</td><td>[0.2, 0.6, 0.2]</td><td>识别瓶颈机器，转移工序到低负载机器</td></tr>
+  <tr><td>蜂群C</td><td>AGV_SMOOTH</td><td>20</td><td>[0.2, 0.2, 0.6]</td><td>相邻工序尽量同机器，减少AGV运输</td></tr>
+</table>
+
+<h3>5. 主循环 while(elapsed &lt; stopMs)</h3>
+
+<h4>5.1 雇佣蜂阶段 &mdash; 各蜂群邻域搜索</h4>
+<ul>
+  <li><span class="tag">蜂群A</span> neighborShortestMachine</li>
+  <li><span class="tag">蜂群B</span> neighborLoadBalancing</li>
+  <li><span class="tag">蜂群C</span> neighborSameMachine</li>
+</ul>
+
+<h4>5.2 观察蜂阶段 &mdash; epsilon-贪婪选择异质算子</h4>
+<table class="flow">
+  <tr><th>算子</th><th>策略</th><th>说明</th></tr>
+  <tr><td>O1</td><td>BottleneckReassign</td><td>瓶颈工厂重分配</td></tr>
+  <tr><td>O2</td><td>RandomPerturb</td><td>随机扰动重分配</td></tr>
+  <tr><td>O3</td><td>HighFitnessCrossover</td><td>高适应度OS交叉</td></tr>
+</table>
+<p>权重自适应：成功 +0.03 / 失败 -0.02 &rarr; 归一化 &rarr; epsilon-贪婪 = 0.4 随机探索，0.6 权重搜索</p>
+
+<h4>5.3 侦察蜂阶段 &mdash; 自适应LIMIT</h4>
+<ul>
+  <li>trial &gt; LIMIT 放弃旧解，生成新解</li>
+  <li>LIMIT 范围 [10, 50]，根据蜂群贡献度动态增减</li>
+</ul>
+
+<h4>5.4 迁移阶段 (每30代)</h4>
+<ul>
+  <li>贡献度 = 1 / bestMakespan</li>
+  <li>各蜂群交换最优个体，仅当改进 &le; 5% 阈值时接受</li>
+  <li>动态规模调整：贡献度低的迁出，贡献度高的迁入，最小规模 6</li>
+</ul>
+
+<h3>6. 解码器：七步调度生成</h3>
+<table class="flow">
+  <tr><th>步骤</th><th>操作</th></tr>
+  <tr><td>6.1</td><td>初始化机器可用时间表、AGV位置追踪</td></tr>
+  <tr><td>6.2</td><td>遍历OS序列：按工序序列逐道调度</td></tr>
+  <tr><td>6.3</td><td>AGV运输调度：计算工序间搬运时间，AGV可顺路接同厂下一任务</td></tr>
+  <tr><td>6.4</td><td>机器加工：工序开始时间 = max(AGV到达时间, 机器可用时间)</td></tr>
+  <tr><td>6.5</td><td>装配点运输：最后工序完成后，装配AGV将工件运至装配点</td></tr>
+  <tr><td>6.6</td><td>产品装配：同产品所有工件到齐后串行装配</td></tr>
+  <tr><td>6.7</td><td>计算Makespan：所有产品装配完成的最晚时间</td></tr>
+</table>
+
+<h3>7. 关键路径分析</h3>
+<ol>
+  <li>记录前驱关系：同工件前一工序 + 同机器前一工序</li>
+  <li>逆向回溯：从最晚完工产品的最后工序开始，选结束时间更晚的前驱</li>
+  <li>标记关键元素：被回溯路径上的工序/工件/机器被标记为"关键"</li>
+  <li>输出瓶颈信息：bottleneckMachine / maxMachineLoad / criticalOps</li>
+</ol>
+
+<h3>核心参数配置</h3>
+<div class="summary-row">
+  <div class="summary-item"><span class="num">60</span><span class="label">TOTAL_POP_SIZE</span></div>
+  <div class="summary-item"><span class="num">20</span><span class="label">INITIAL_COLONY_SIZE</span></div>
+  <div class="summary-item"><span class="num">30</span><span class="label">MIGRATION_INTERVAL</span></div>
+  <div class="summary-item"><span class="num">5%</span><span class="label">迁移阈值</span></div>
+  <div class="summary-item"><span class="num">0.4</span><span class="label">EPSILON_GREEDY</span></div>
+  <div class="summary-item"><span class="num">10/50</span><span class="label">LIMIT_MIN/MAX</span></div>
+  <div class="summary-item"><span class="num">6</span><span class="label">MIN_COLONY_SIZE</span></div>
+  <div class="summary-item"><span class="num">+0.03/-0.02</span><span class="label">算子权重更新</span></div>
+</div>
+</div>
+
+<footer>
+  <p>DFJSP多群体ABC算法研究汇报 &mdash; 代码重构与创新算法</p>
+  <p>GitHub 仓库: <a href="https://github.com/LC-make/LC" style="color:#595959;">LC-make/LC</a></p>
+</footer>
+
+</div>
+</body>
+</html>

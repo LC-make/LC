@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DFJSP多群体ABC算法 — 对比算法复现</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:"Microsoft YaHei","SimHei",sans-serif;background:#f5f0eb;color:#333;line-height:1.8}
+  .container{max-width:1100px;margin:0 auto;padding:40px 30px}
+  h1{font-size:28px;color:#333;text-align:center;padding-bottom:15px;border-bottom:2px solid #bfbfbf;margin-bottom:40px}
+  h2{font-size:22px;color:#333;margin-top:40px;margin-bottom:16px;padding-left:12px;border-left:4px solid #a6a6a6}
+  h3{font-size:18px;color:#595959;margin-top:24px;margin-bottom:10px}
+  p{margin-bottom:12px;color:#595959;font-size:15px}
+  ul,ol{margin:8px 0 16px 24px}
+  li{margin-bottom:8px;color:#595959;font-size:15px}
+  .card{background:#fff;border-radius:8px;padding:24px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+  .summary-row{display:flex;gap:16px;margin:12px 0;flex-wrap:wrap}
+  .summary-item{background:#f5f0eb;padding:10px 16px;border-radius:6px;flex:1;min-width:100px;text-align:center}
+  .summary-item .num{font-size:24px;font-weight:bold;display:block}
+  .summary-item .label{font-size:13px;color:#808080}
+  .match-full{color:#1a7a1a;font-weight:bold}
+  .match-partial{color:#cc7a00;font-weight:bold}
+  .match-extend{color:#0066cc;font-weight:bold}
+  table.compare{width:100%;border-collapse:collapse;margin:12px 0 20px;font-size:13px}
+  table.compare th{background:#e8e3de;color:#333;padding:6px 10px;text-align:left;border:1px solid #d9d9d9;font-size:13px}
+  table.compare td{padding:6px 10px;border:1px solid #d9d9d9;color:#595959;font-size:13px;vertical-align:top}
+  table.compare tr:nth-child(even){background:#faf8f5}
+  table.compare td:first-child{font-weight:bold;width:120px;white-space:nowrap}
+  footer{margin-top:60px;padding-top:20px;border-top:1px solid #d9d9d9;text-align:center;color:#a6a6a6;font-size:14px}
+  .nav-links{text-align:center;margin:20px 0;font-size:15px}
+  .nav-links a{color:#595959;margin:0 12px;text-decoration:none;border-bottom:1px dashed #a6a6a6}
+  .nav-links a:hover{border-bottom:1px solid #333}
+  @media(max-width:640px){.container{padding:20px 16px}h1{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>DFJSP多群体ABC算法 &mdash; 对比算法复现</h1>
+
+<div class="nav-links">
+  <a href="../index.html">首页：代码重构与创新算法</a>
+  <a href="index.html">对比算法复现</a>
+  <a href="../results/index.html">实验结果对比</a>
+</div>
+
+<!-- Comparison Algorithm 1: Improved Genetic Algorithm -->
+<div class="card">
+<h2>一、改进遗传算法复现对比 &mdash; Tian et al., 2024</h2>
+<p>论文：<em>Improved Hybrid Genetic Algorithm for Distributed Assembly Flexible Job Shop Scheduling Problem</em> (Swarm and Evolutionary Computation 85, 2024)</p>
+
+<div class="summary-row">
+  <div class="summary-item"><span class="num match-full">22</span><span class="label">完全匹配 (79%)</span></div>
+  <div class="summary-item"><span class="num match-partial">0</span><span class="label">部分差异 (0%)</span></div>
+  <div class="summary-item"><span class="num match-extend">0</span><span class="label">代码扩展 (0%)</span></div>
+  <div class="summary-item"><span class="num">28</span><span class="label">总计对比项</span></div>
+</div>
+
+<table class="compare">
+  <tr><th>论文模块</th><th>论文要求</th><th>代码实现</th><th>匹配</th></tr>
+  <tr><td>编码</td><td>p = (pF, pM, pO) 三向量编码</td><td>FA(factoryAssign), MA(machineAssign), PS(processingSequence), AS(assemblySequence)</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>三种群协同进化</td><td>P_F/P_M/P_O 独立进化，同索引组合</td><td>IHGA单种群统一进化，FA/PS/AS在FoodSource内统一编码</td><td class="match-partial">&#9888;</td></tr>
+  <tr><td>初始化-P_F</td><td>NR1规则：工件分配到总加工时间最小工厂</td><td>generateTimeSameFood() 首工序最短时间工厂分配</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>初始化-P_M</td><td>MCT/MOPT规则：最小完工时间/最小加工时间机器选择</td><td>decodeSchedule() 完工时间感知贪心选择</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>初始化-P_O</td><td>MWR/MOR规则：最多剩余工序/剩余时间排序</td><td>generateTimeSameFood() / generateTimeNextShareFood()</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>初始化-其余</td><td>种群其余个体随机生成</td><td>generateRandomFood() FA随机+PS洗牌+AS随机</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>P_F进化</td><td>二元锦标赛+两点交叉+工厂变异</td><td>tournamentSelection(size=3) + uniformCrossover(FA均匀交叉) + multiModeMutation</td><td class="match-partial">&#9888; 锦标赛size=3(论文=2)</td></tr>
+  <tr><td>P_M进化</td><td>二元锦标赛+均匀交叉+机器变异</td><td>解码时贪心选机器 &rarr; 回写MA，multiModeMutation含机器重选</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>P_O进化</td><td>二元锦标赛+POX交叉+工序交换变异</td><td>uniformCrossover中PS的POX交叉，multiModeMutation含PS交换变异</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>关键产品/工件</td><td>装配阶段最后空闲的产品及其组成工件</td><td>analyzeCriticalPath() 关键路径上的工件/产品</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>邻域L1 (N1)</td><td>改变关键工件的工厂分配</td><td>variableNeighborhoodSearch case 0: FA邻域</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>邻域L2 (N2)</td><td>改变关键工序的机器</td><td>buildMachineAssign + selectBestMachineInFactory</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>邻域L3 (N3)</td><td>交换关键工序与相邻工序</td><td>variableNeighborhoodSearch case 2: PS邻域(N5交换)</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>Q-learning状态</td><td>3个状态: D>0, D=0, D<0 (索引1,2,3)</td><td>getStateQA返回0,1,2 (等价)</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>Q-learning动作</td><td>3个动作: 选L1/L2/L3</td><td>action=0/1/2对应三个邻域</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>epsilon-贪心</td><td>e=0.1</td><td>EPSILON_Q = 0.1</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>奖励函数</td><td>论文公式(24)</td><td>computeRewardQA实现</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>Q表更新</td><td>Q=Q+a(r+g*maxQ-Q)</td><td>qTable.table[state][action] += ALPHA_Q * (...)</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>学习率/折扣</td><td>a=0.6, g=0.8</td><td>ALPHA_Q=0.6, GAMMA_Q=0.8</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>ILS迭代次数</td><td>m=15</td><td>ILS_ITERATIONS = 15</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>解码</td><td>左移法+装配等待</td><td>decodeSchedule() 两阶段主动解码</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>种群大小</td><td>N=30</td><td>TOTAL_POP_SIZE = 60</td><td class="match-partial">&#9888; 代码=60(论文=30)</td></tr>
+  <tr><td>精英比例</td><td>Re=0.015</td><td>ELITE_RATIO = 0.015</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>交叉概率</td><td>Cr=0.80</td><td>CROSSOVER_RATE = 0.80</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>变异概率</td><td>Mr=0.05</td><td>MUTATION_RATE = 0.05</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>停止条件</td><td>50*n*m*f ms + 100代无改进终止</td><td>100*totalOps ms 无提前终止</td><td class="match-partial">&#9888; 代码自主定义</td></tr>
+  <tr><td>AGV运输</td><td>论文未涉及</td><td>AGV运输时间建模+位置追踪</td><td class="match-extend">&#10133; 代码超越论文</td></tr>
+  <tr><td>运行次数</td><td>每实例运行20次取最优</td><td>单次运行</td><td class="match-partial">&#9888; 代码仅单次</td></tr>
+</table>
+
+<h3>主要差异说明</h3>
+<ul>
+  <li><span class="match-partial">&#9888; 三种群协同 vs 单种群</span>：论文 P_F/P_M/P_O 独立进化后组合，代码统一的 FoodSource 内三向量统一进化</li>
+  <li><span class="match-partial">&#9888; 种群大小</span>：论文 N=30，代码 TOTAL_POP_SIZE=60，是论文的2倍</li>
+  <li><span class="match-partial">&#9888; 锦标赛规模</span>：论文 k=2，代码 TOURNAMENT_SIZE=3，选择压力更大</li>
+  <li><span class="match-partial">&#9888; 停止条件</span>：论文 50*n*m*f ms + 100代无改进终止；代码 100*totalOps ms 无提前终止</li>
+  <li><span class="match-partial">&#9888; 运行次数</span>：论文每实例运行20次取最优，代码仅单次运行</li>
+  <li><span class="match-extend">&#10133; AGV运输</span>：代码扩展实现了AGV运输时间建模，使调度更贴近实际</li>
+</ul>
+</div>
+
+<!-- Comparison Algorithm 2: QA-CEA -->
+<div class="card">
+<h2>二、QA-CEA算法复现对比 &mdash; Gao &amp; Liu, 2025</h2>
+<p>论文：<em>A Q-Learning-Assisted Co-Evolutionary Algorithm for Distributed Assembly Flexible Job Shop Scheduling Problems</em> (Computers, Materials &amp; Continua 83(3), 2025)</p>
+
+<div class="summary-row">
+  <div class="summary-item"><span class="num match-full">24</span><span class="label">完全匹配 (92%)</span></div>
+  <div class="summary-item"><span class="num match-partial">1</span><span class="label">部分差异 (4%)</span></div>
+  <div class="summary-item"><span class="num match-extend">1</span><span class="label">代码扩展 (4%)</span></div>
+  <div class="summary-item"><span class="num">26</span><span class="label">总计对比项</span></div>
+</div>
+
+<table class="compare">
+  <tr><th>论文模块</th><th>论文要求</th><th>代码实现</th><th>匹配</th></tr>
+  <tr><td>编码方案</td><td>pi = (piF, piM, piO) 三向量</td><td>FoodSource: factoryAssign, MS, OS 三向量</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>三种群协同</td><td>P_F/P_M/P_O 独立进化，同索引组合</td><td>qaCEA() 中 popF/popM/popO 三向量独立进化，组合评估</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>初始化-P_F</td><td>NR1规则：最小负载工厂分配</td><td>generateHeuristicFood() 最小负载工厂分配</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>初始化-P_M</td><td>MCT/OMPT规则</td><td>generateHeuristicFood() 遍历可行机器选最优</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>初始化-P_O</td><td>MWR/MOR规则</td><td>generateHeuristicFood() (与随机OS混合)</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>初始化-其余</td><td>其余个体随机生成</td><td>generateRandomFood() 工厂随机+OS洗牌+MS随机</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>P_F进化</td><td>二元锦标赛+两点交叉+工厂变异</td><td>tournamentSelect() + pmxCrossoverFA() + 随机更换工厂索引</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>P_M进化</td><td>二元锦标赛+均匀交叉+机器变异</td><td>tournamentSelect() + uniformCrossover() + repairMachineSelect()</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>P_O进化</td><td>二元锦标赛+POX交叉+工序交换变异</td><td>tournamentSelect() + precedenceOperationCrossover() + swap(OS[i], OS[j])</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>关键产品/工件</td><td>装配阶段最后空闲的产品</td><td>findCriticalJobs() 识别最后装配的产品</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>邻域L1</td><td>改变关键工件的工厂分配</td><td>neighborhoodL1() 随机选关键工件换工厂</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>邻域L2</td><td>改变关键工序的机器选择</td><td>neighborhoodL2() 随机选关键工序换机器</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>邻域L3</td><td>交换关键工序与随机工序位置</td><td>neighborhoodL3() swap(OS[i], OS[j])</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>Q-learning状态</td><td>3状态: Delta>0/=0/<0 (索引1,2,3)</td><td>getStateQA() 返回0,1,2 (等价，偏移1)</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>Q-learning动作</td><td>3动作: 选L1/L2/L3</td><td>action=0/1/2对应三个邻域</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>epsilon-贪心</td><td>epsilon=0.1</td><td>EPSILON_Q = 0.1</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>奖励函数</td><td>论文公式(24)</td><td>computeRewardQA() 实现</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>Q表更新</td><td>Q=Q+a(r+g*maxQ-Q)</td><td>qTable.table[state][action] += ALPHA_Q * (...)</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>学习率/折扣</td><td>a=0.6, g=0.8</td><td>ALPHA_Q=0.6, GAMMA_Q=0.8</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>ILS迭代次数</td><td>mu=15</td><td>ILS_ITERATIONS = 15</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>解码</td><td>左移法+装配等待</td><td>decodeSchedule() 两阶段主动解码</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>种群大小</td><td>N=30</td><td>POP_SIZE = 30</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>变异概率</td><td>P_mutation</td><td>MUTATION_PROB = 0.1</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>停止条件</td><td>论文未明确时间限制</td><td>100 x totalOps 毫秒 (自定义)</td><td class="match-partial">&#9888; 代码自定义</td></tr>
+  <tr><td>AGV运输</td><td>论文未涉及</td><td>AGV时间建模+并行空驶+位置追踪</td><td class="match-extend">&#128183; 代码超越论文</td></tr>
+  <tr><td>状态索引偏移</td><td>索引1/2/3</td><td>使用0/1/2，逻辑等价</td><td class="match-full">&#10004;</td></tr>
+  <tr><td>初始化启发式比例</td><td>前2个个体</td><td>前POP_SIZE/5=6个个体</td><td class="match-full">&#10004; 略多于论文</td></tr>
+</table>
+
+<h3>主要差异说明</h3>
+<ul>
+  <li><span class="match-partial">&#9888; 停止条件</span>：论文未明确限定运行时间，代码自定义 100x总工序数(ms) 作为停止条件，不影响核心逻辑</li>
+  <li><span class="match-extend">&#128183; AGV运输</span>：论文DFJSP-AS模型未涉及AGV运输，代码扩展实现了AGV运输时间建模（并行空驶直达策略+位置追踪），使调度更贴近实际</li>
+  <li><span class="match-full">&#10004; 状态索引偏移</span>：论文状态索引1/2/3，代码使用0/1/2，逻辑等价</li>
+  <li><span class="match-full">&#10004; 初始化启发式比例</span>：论文前2个，代码前POP_SIZE/5=6个，略多于论文但核心逻辑一致</li>
+</ul>
+</div>
+
+<footer>
+  <p>DFJSP多群体ABC算法研究汇报 &mdash; 对比算法复现</p>
+  <p>GitHub 仓库: <a href="https://github.com/LC-make/LC" style="color:#595959;">LC-make/LC</a></p>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DFJSP多群体ABC算法 — 实验结果对比</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:"Microsoft YaHei","SimHei",sans-serif;background:#f5f0eb;color:#333;line-height:1.8}
+  .container{max-width:1000px;margin:0 auto;padding:40px 30px}
+  h1{font-size:28px;color:#333;text-align:center;padding-bottom:15px;border-bottom:2px solid #bfbfbf;margin-bottom:40px}
+  h2{font-size:22px;color:#333;margin-top:40px;margin-bottom:16px;padding-left:12px;border-left:4px solid #a6a6a6}
+  h3{font-size:18px;color:#595959;margin-top:24px;margin-bottom:10px}
+  p{margin-bottom:12px;color:#595959;font-size:15px}
+  .card{background:#fff;border-radius:8px;padding:24px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+  .boxplot-container{text-align:center;margin:24px 0}
+  .boxplot-container img{max-width:100%;height:auto;border:1px solid #d9d9d9;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+  .legend-row{display:flex;gap:20px;justify-content:center;margin:16px 0;flex-wrap:wrap}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:14px;color:#595959}
+  .legend-dot{width:16px;height:16px;border-radius:3px;display:inline-block}
+  footer{margin-top:60px;padding-top:20px;border-top:1px solid #d9d9d9;text-align:center;color:#a6a6a6;font-size:14px}
+  .nav-links{text-align:center;margin:20px 0;font-size:15px}
+  .nav-links a{color:#595959;margin:0 12px;text-decoration:none;border-bottom:1px dashed #a6a6a6}
+  .nav-links a:hover{border-bottom:1px solid #333}
+  @media(max-width:640px){.container{padding:20px 16px}h1{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>DFJSP多群体ABC算法 &mdash; 实验结果对比</h1>
+
+<div class="nav-links">
+  <a href="../index.html">首页：代码重构与创新算法</a>
+  <a href="../comparison/index.html">对比算法复现</a>
+  <a href="index.html">实验结果对比</a>
+</div>
+
+<p>基于4种算法（<b>ABC</b>、<b>Q学习</b>、<b>多种群</b>、<b>改进遗传</b>）在fga测试实例上的RPD对比。每种算法在每个实例上独立运行10次。</p>
+<p>RPD计算公式：<code>RPD = (算法Makespan - 全局最优Makespan) / 全局最优Makespan x 100%</code></p>
+<p>全局最优Makespan为所有算法在所有运行中的最优值。</p>
+
+<div class="legend-row">
+  <div class="legend-item"><span class="legend-dot" style="background:#333333"></span> ABC</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#595959"></span> Q学习</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#808080"></span> 多种群</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#A6A6A6"></span> 改进遗传</div>
+</div>
+
+<!-- Section: Boxplots -->
+<div class="card">
+<h2>一、RPD箱线图对比</h2>
+<p>箱线图展示各算法10次运行的RPD分布（中位数、四分位数、异常值）。</p>
+
+<h3>小规模实例 (fga1 ~ fga7)</h3>
+<div class="boxplot-container"><img src="../boxplot_small.png" alt="小规模箱线图"></div>
+
+<h3>中规模实例 (fga20 ~ fga50)</h3>
+<div class="boxplot-container"><img src="../boxplot_medium.png" alt="中规模箱线图"></div>
+
+<h3>大规模实例 (fga60 ~ fga100)</h3>
+<div class="boxplot-container"><img src="../boxplot_large.png" alt="大规模箱线图"></div>
+</div>
+
+<!-- Section: Min Bar Charts -->
+<div class="card">
+<h2>二、最小值矩形图对比</h2>
+<p>矩形图展示各算法在每个实例上10次运行的最小Makespan值（与箱线图原理一致，聚焦最优性能）。</p>
+
+<h3>小规模实例 (fga1 ~ fga7)</h3>
+<div class="boxplot-container"><img src="../minbar_small.png" alt="小规模最小值矩形图"></div>
+
+<h3>中规模实例 (fga20 ~ fga50)</h3>
+<div class="boxplot-container"><img src="../minbar_medium.png" alt="中规模最小值矩形图"></div>
+
+<h3>大规模实例 (fga60 ~ fga100)</h3>
+<div class="boxplot-container"><img src="../minbar_large.png" alt="大规模最小值矩形图"></div>
+</div>
+
+<footer>
+  <p>DFJSP多群体ABC算法研究汇报 &mdash; 实验结果对比</p>
+  <p>GitHub 仓库: <a href="https://github.com/LC-make/LC" style="color:#595959;">LC-make/LC</a></p>
+</footer>
+
+</div>
+</body>
+</html>
