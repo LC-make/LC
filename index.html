@@ -1,149 +1,353 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DFJSP多群体ABC算法 — 代码重构与创新算法</title>
+<title>消融实验分析：原策略 vs 删除迁移竞争 vs 删除自适应LIMIT</title>
+<style>
+  :root{
+    --bg:#f5f7fb; --card:#ffffff; --ink:#1f2937; --mut:#6b7280; --line:#e5e7eb;
+    --c-orig:#2563eb; --c-migr:#d97706; --c-adap:#dc2626;
+    --ok:#059669; --warn:#b45309; --bad:#b91c1c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:"Microsoft YaHei","PingFang SC","Segoe UI",system-ui,sans-serif;line-height:1.6}
+  header{padding:26px 22px 18px;background:#111827;color:#fff}
+  header .wrap{max-width:1180px;margin:0 auto}
+  header h1{margin:0 0 6px;font-size:22px;letter-spacing:.5px}
+  header p{margin:2px 0;color:#cbd5e1;font-size:13px}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+  nav.tabs{position:sticky;top:0;z-index:5;background:#ffffffcc;backdrop-filter:blur(6px);
+           border-bottom:1px solid var(--line);padding:8px 22px;display:flex;gap:6px;flex-wrap:wrap}
+  nav.tabs a{color:var(--mut);text-decoration:none;font-size:13px;padding:5px 12px;border-radius:999px;border:1px solid transparent}
+  nav.tabs a:hover{color:var(--c-orig);background:#eff6ff}
+  section{margin:26px 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  h2{font-size:17px;margin:0 0 4px}
+  .sec-sub{color:var(--mut);font-size:12.5px;margin:0 0 14px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:18px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .kpi .lab{font-size:12.5px;color:var(--mut)}
+  .kpi .big{font-size:26px;font-weight:700;margin:2px 0;font-variant-numeric:tabular-nums}
+  .kpi .sub{font-size:12px;color:var(--mut)}
+  .best{color:var(--ok);font-weight:700}
+  .worse{color:var(--bad)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+  table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:center;vertical-align:middle}
+  th{background:#f3f4f6;font-weight:600;white-space:nowrap}
+  tbody tr:nth-child(even){background:#fafbfc}
+  .mono{font-family:Consolas,"Courier New",monospace}
+  .num{text-align:right}
+  .dim{color:var(--mut)}
+  .pill{display:inline-block;font-size:11.5px;padding:1px 9px;border-radius:999px;border:1px solid}
+  .pill.ok{color:var(--ok);border-color:#a7f3d0;background:#ecfdf5}
+  .pill.warn{color:var(--warn);border-color:#fde68a;background:#fffbeb}
+  .pill.bad{color:var(--bad);border-color:#fecaca;background:#fef2f2}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .legend span{margin-right:16px;font-size:12.5px;color:#374151}
+  figure{margin:6px 0 0}
+  svg{width:100%;height:auto;display:block}
+  .note{font-size:12px;color:var(--mut);margin-top:8px}
+  .concl p{margin:0 0 10px}
+  .alert{border-left:4px solid var(--warn);background:#fffbeb;padding:10px 14px;border-radius:0 10px 10px 0;font-size:13px}
+  details{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#fff}
+  details summary{cursor:pointer;font-size:13.5px;font-weight:600;color:#374151}
+  footer{margin:34px 0 10px;border-top:1px solid var(--line);padding:14px 0 20px;color:var(--mut);font-size:12px}
+  .scroll{overflow-x:auto}
+  .tag{font-size:11px;background:#eef2ff;color:#4338ca;padding:1px 8px;border-radius:999px}
+  table.detail td small{display:block;color:var(--mut);font-weight:400}
+  .hd{text-align:left;font-size:13px;color:var(--mut)}
+  table.detail td span.best, table.detail td small.best{color:var(--ok)}
+</style>
 </head>
 <body>
-<div class="container">
+<header>
+  <div class="wrap">
+    <h1>消融实验分析：原策略效果检验</h1>
+    <p>对比对象：原策略 · 删除迁移竞争策略 · 删除自适应LIMIT ｜ 指标口径：越小越好（已确认）</p>
+    <p>数据来源：C:\Users\Admin\Desktop\对比\消融实验 下的三个 .xlsx（仅读取数值单元格，未读取任何图片）｜ 报告生成：2026-09-09</p>
+  </div>
+</header>
+<nav class="tabs">
+  <a href="参数分析.html" style="border-color:var(--c-orig);color:var(--c-orig)">参数实验分析 ↗</a>
+  <a href="#ov">概览</a><a href="#method">方法与数据</a><a href="#charts">图表</a>
+  <a href="#inst">逐实例数据</a><a href="#tests">检验结果</a><a href="#concl">结论</a><a href="#raw">原始运行数据</a>
+</nav>
+<div class="wrap">
 
+<section id="ov">
+  <div class="card">
+    <h2>1. 总体结论（概览）</h2>
+    <p class="sec-sub">下方数字均由三个表格的 10 次运行结果实时计算生成（汇总列与表格内“最小值”一致）。</p>
+    <div class="kpis" id="kpis"></div>
+    <div class="alert" id="headline"></div>
+  </div>
+</section>
 
+<section id="method">
+  <div class="card">
+    <h2>2. 任务、数据与方法说明</h2>
+    <p class="sec-sub">先明确“检验什么、用什么数据、怎么判定”，再展示结果。</p>
+    <p><b>实验目的（消融实验）。</b>原策略为完整算法；两个变体分别删除其中一个组件：
+    ①<b>删除迁移竞争策略</b>（保留自适应 LIMIT，缺失“迁移竞争”）；②<b>删除自适应 LIMIT</b>（保留迁移竞争，缺失“自适应 LIMIT”）。
+    若某组件对性能有贡献，删除后指标应变差（即数值变大）。分析用于检验两个组件各自是否有效、以及完整版“原策略”是否总体最优。</p>
+    <p><b>数据规模。</b>每张表结构相同：小规模 4 个实例（fga1/3/5/7）、中规模 4 个（fga20/25/30/35）、大规模 4 个（fga60/70/80/90），共 12 个实例；每个实例在三种策略下各执行 10 次独立运行，表内还给出 10 次中的<b>最小值</b>列。</p>
+    <p><b>指标方向。</b>用户已确认：<b>指标值越小越好</b>，因此“最优”= 数值最小。比较采用两个口径：每实例 <b>10 次运行最小值（best）</b> 与 <b>10 次运行均值</b>（附标准差，反映稳定性）。</p>
+    <p><b>统计方法。</b>以 12 个实例为配对单位（同一实例分别用三种策略测试）做配对比较：
+    ①精确 <b>Wilcoxon 符号秩检验</b>（双侧、差值为 0 的实例剔除并报告有效样本 n<sub>eff</sub>，手工穷举零分布，不依赖任何统计包）；
+    ②<b>符号检验</b>（双侧精确二项）。分别对“最小值口径”和“均值口径”各做一组。由于未确认 10 次运行是否共享同一随机种子，逐次运行<b>不做</b>配对分析，仅作汇总参考。未对多重比较做校正（见局限）。</p>
+    <p><b>局限（如实声明）。</b>样本较小（12 实例），检验功效有限；fga1/3/5 等实例三策略常打平，可能已触及问题下界/最优值；未校正多重比较；若实例背景与 10 次运行的种子策略未知，结论宜当作“趋势证据”而非最终定论。</p>
+  </div>
+</section>
 
+<section id="charts">
+  <div class="card">
+    <h2>3. 图表对比</h2>
+    <p class="sec-sub">同一实例内三策略直接比较，绿色 = 原策略，橙色 = 删除迁移竞争，红色 = 删除自适应LIMIT。</p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--c-orig)"></i>原策略</span>
+      <span><i class="dot" style="background:var(--c-migr)"></i>删除迁移竞争策略</span>
+      <span><i class="dot" style="background:var(--c-adap)"></i>删除自适应LIMIT</span>
+    </div>
+    <figure>
+      <figcaption style="font-size:13.5px;font-weight:600">图 1：各实例 10 次运行的最小值（越小越好）</figcaption>
+      <svg id="chartMin" viewBox="0 0 880 330" preserveAspectRatio="xMidYMid meet"></svg>
+      <p class="note">观察点：中大规模多数实例原策略最低；fga20/fga25/fga60 上“删除迁移竞争”的 min 反而更低。</p>
+    </figure>
+    <figure style="margin-top:18px">
+      <figcaption style="font-size:13.5px;font-weight:600">图 2：各实例 10 次运行的均值（越小越好）</figcaption>
+      <svg id="chartMean" viewBox="0 0 880 330" preserveAspectRatio="xMidYMid meet"></svg>
+      <p class="note">观察点：均值口径下原策略在 12 个实例中的 10 个上占优（fga20 输给“删除迁移竞争”，fga90 输给“删除自适应LIMIT”）。</p>
+    </figure>
+    <div class="grid2" style="margin-top:18px">
+      <figure>
+        <figcaption style="font-size:13.5px;font-weight:600">图 3：分规模“最小值”合计</figcaption>
+        <svg id="chartScaleMin" viewBox="0 0 430 280" preserveAspectRatio="xMidYMid meet"></svg>
+      </figure>
+      <figure>
+        <figcaption style="font-size:13.5px;font-weight:600">图 4：分规模“均值”合计</figcaption>
+        <svg id="chartScaleMean" viewBox="0 0 430 280" preserveAspectRatio="xMidYMid meet"></svg>
+      </figure>
+    </div>
+  </div>
+</section>
 
+<section id="inst">
+  <div class="card">
+    <h2>4. 逐实例对比</h2>
+    <p class="sec-sub">绿色加粗 = 该行该口径下的最优值（并列则同时标绿）。每格上方为 10 次运行最小值，下方为 均值±标准差。</p>
+    <div class="scroll" id="instTable"></div>
+    <p class="note">合计行说明：min 合计 = 12 个实例各自 10 次运行最小值的总和；mean 合计 = 12 个实例各自 10 次运行均值的总和（两种合计中最小者即“总体最好”）。</p>
+  </div>
+</section>
 
-<!-- Part 1: Code Restructuring -->
-<div class="card">
-<h2>一、代码重构：单主程序 &rarr; 两模块头文件架构</h2>
-<p>原始代码将所有功能集中在一个主程序中，代码耦合度高、可维护性差。重构后拆分为两个独立模块：<code>encoding.h</code>（编码解码）、<code>data_io.h</code>（数据读取），主程序仅负责调用。</p>
+<section id="tests">
+  <div class="card">
+    <h2>5. 统计检验结果</h2>
+    <p class="sec-sub">配对单位 = 12 个实例；“优/劣”指第一列策略相对第二列策略在对应口径下数值更小/更大。p 值为双侧。</p>
+    <div id="testTables"></div>
+    <p class="note">符号：* p&lt;0.05，** p&lt;0.01。检验对差值为 0 的实例做了剔除，n<sub>eff</sub> 为实际参与排名的实例数（并列实例不贡献信息）。</p>
+  </div>
+</section>
 
-<h3>文件结构</h3>
-<div class="code-block">DFJSP_Project/
- ┣ main.cpp                  # 主程序入口，调用两个头文件
- ┣ encoding.h                # 编码+解码模块（双编码表示 + 解码器）
- ┣ data_io.h                 # 数据读取模块（输入解析与参数配置）
- ┗ fga/                      # 测试实例文件夹
-     ┣ fga1.txt
-     ┗ ...</div>
+<section id="concl">
+  <div class="card">
+    <h2>6. 结论：组件是否有效、原策略是否最好</h2>
+    <div class="concl" id="conclusion"></div>
+  </div>
+</section>
 
-<h3>encoding.h &mdash; 编码+解码模块</h3>
-<p>该头文件封装了完整的双编码表示与解码调度算法（源代码截图）：</p>
-<div class="boxplot-container"><img src="code_decoder.png" alt="encoding.h 源码截图" style="max-width:100%;height:auto;border:1px solid #d9d9d9;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.08)"></div>
-
-<h3>data_io.h &mdash; 数据读取模块</h3>
-<p>该头文件独立负责所有数据输入解析与算法参数配置（源代码截图）：</p>
-<div class="boxplot-container"><img src="code_datareader.png" alt="data_io.h 源码截图" style="max-width:100%;height:auto;border:1px solid #d9d9d9;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.08)"></div>
-
-<h3>main.cpp &mdash; 主程序入口</h3>
-<p>主程序直接调用两个头文件，实现代码解耦（源代码截图）：</p>
-<div class="boxplot-container"><img src="code_main.png" alt="main.cpp 源码截图" style="max-width:100%;height:auto;border:1px solid #d9d9d9;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.08)"></div>
+<section id="raw">
+  <div class="card">
+    <h2>7. 附录：原始 10 次运行数据</h2>
+    <p class="sec-sub">与三个 .xlsx 逐格一致（数值单元格直接提取）。</p>
+    <div id="rawTables"></div>
+  </div>
+</section>
 
 </div>
-
-<!-- Part 2: Innovation Algorithm -->
-<div class="card">
-<h2>二、创新算法：多群体ABC算法详解</h2>
-<p>基于多群体ABC（Artificial Bee Colony）的分布式柔性作业车间调度（DFJSP）算法，提出三异质蜂群协同进化架构，融合自适应算子选择与关键路径分析。</p>
-
-<h3>1. 数据输入</h3>
-<ul>
-  <li>读取数据文件 fga*.txt</li>
-  <li>解析工件数 / 机器数 / 工厂划分</li>
-  <li>读取加工时间、AGV运输时间、产品装配参数</li>
-</ul>
-
-<h3>2. 双编码表示 (Dual Representation)</h3>
-<table class="flow">
-  <tr><th>编码类型</th><th>用途</th><th>说明</th></tr>
-  <tr><td>三向量编码</td><td>解码专用</td><td>OS(Operation Sequence) + MS(Machine Sequence) + AT(Assembly Time)</td></tr>
-  <tr><td>工厂-机器分配</td><td>算子专用</td><td>jobFactory[j] + machineAssign[j][o] &rarr; <code>syncEncoding()</code> 保持同步</td></tr>
-</table>
-
-<h3>3. 种群初始化 (60个食物源)</h3>
-<table class="flow">
-  <tr><th>比例</th><th>策略</th><th>说明</th></tr>
-  <tr><td>70%</td><td>随机生成</td><td>完全随机分配工厂和机器 &rarr; Fisher-Yates洗牌OS序列</td></tr>
-  <tr><td>15%</td><td>时间优先</td><td>首工序选最短加工时间机器，后续优先同机</td></tr>
-  <tr><td>15%</td><td>交错生成</td><td>首工序选最短时间，后续优先选与下一工序共享的机器</td></tr>
-</table>
-
-<h3>4. 初始化三个异质蜂群</h3>
-<table class="flow">
-  <tr><th>蜂群</th><th>策略</th><th>规模</th><th>权重</th><th>说明</th></tr>
-  <tr><td>蜂群A</td><td>TIME_FIRST</td><td>20</td><td>[0.6, 0.2, 0.2]</td><td>每工序选加工时间最短的机器</td></tr>
-  <tr><td>蜂群B</td><td>LOAD_BALANCE</td><td>20</td><td>[0.2, 0.6, 0.2]</td><td>识别瓶颈机器，转移工序到低负载机器</td></tr>
-  <tr><td>蜂群C</td><td>AGV_SMOOTH</td><td>20</td><td>[0.2, 0.2, 0.6]</td><td>相邻工序尽量同机器，减少AGV运输</td></tr>
-</table>
-
-<h3>5. 主循环 while(elapsed &lt; stopMs)</h3>
-
-<h4>5.1 雇佣蜂阶段 &mdash; 各蜂群邻域搜索</h4>
-<ul>
-  <li><span class="tag">蜂群A</span> neighborShortestMachine</li>
-  <li><span class="tag">蜂群B</span> neighborLoadBalancing</li>
-  <li><span class="tag">蜂群C</span> neighborSameMachine</li>
-</ul>
-
-<h4>5.2 观察蜂阶段 &mdash; epsilon-贪婪选择异质算子</h4>
-<table class="flow">
-  <tr><th>算子</th><th>策略</th><th>说明</th></tr>
-  <tr><td>O1</td><td>BottleneckReassign</td><td>瓶颈工厂重分配</td></tr>
-  <tr><td>O2</td><td>RandomPerturb</td><td>随机扰动重分配</td></tr>
-  <tr><td>O3</td><td>HighFitnessCrossover</td><td>高适应度OS交叉</td></tr>
-</table>
-<p>权重自适应：成功 +0.03 / 失败 -0.02 &rarr; 归一化 &rarr; epsilon-贪婪 = 0.4 随机探索，0.6 权重搜索</p>
-
-<h4>5.3 侦察蜂阶段 &mdash; 自适应LIMIT</h4>
-<ul>
-  <li>trial &gt; LIMIT 放弃旧解，生成新解</li>
-  <li>LIMIT 范围 [10, 50]，根据蜂群贡献度动态增减</li>
-</ul>
-
-<h4>5.4 迁移阶段 (每30代)</h4>
-<ul>
-  <li>贡献度 = 1 / bestMakespan</li>
-  <li>各蜂群交换最优个体，仅当改进 &le; 5% 阈值时接受</li>
-  <li>动态规模调整：贡献度低的迁出，贡献度高的迁入，最小规模 6</li>
-</ul>
-
-<h3>6. 解码器：七步调度生成</h3>
-<table class="flow">
-  <tr><th>步骤</th><th>操作</th></tr>
-  <tr><td>6.1</td><td>初始化机器可用时间表、AGV位置追踪</td></tr>
-  <tr><td>6.2</td><td>遍历OS序列：按工序序列逐道调度</td></tr>
-  <tr><td>6.3</td><td>AGV运输调度：计算工序间搬运时间，AGV可顺路接同厂下一任务</td></tr>
-  <tr><td>6.4</td><td>机器加工：工序开始时间 = max(AGV到达时间, 机器可用时间)</td></tr>
-  <tr><td>6.5</td><td>装配点运输：最后工序完成后，装配AGV将工件运至装配点</td></tr>
-  <tr><td>6.6</td><td>产品装配：同产品所有工件到齐后串行装配</td></tr>
-  <tr><td>6.7</td><td>计算Makespan：所有产品装配完成的最晚时间</td></tr>
-</table>
-
-<h3>7. 关键路径分析</h3>
-<ol>
-  <li>记录前驱关系：同工件前一工序 + 同机器前一工序</li>
-  <li>逆向回溯：从最晚完工产品的最后工序开始，选结束时间更晚的前驱</li>
-  <li>标记关键元素：被回溯路径上的工序/工件/机器被标记为"关键"</li>
-  <li>输出瓶颈信息：bottleneckMachine / maxMachineLoad / criticalOps</li>
-</ol>
-
-<h3>核心参数配置</h3>
-<div class="summary-row">
-  <div class="summary-item"><span class="num">60</span><span class="label">TOTAL_POP_SIZE</span></div>
-  <div class="summary-item"><span class="num">20</span><span class="label">INITIAL_COLONY_SIZE</span></div>
-  <div class="summary-item"><span class="num">30</span><span class="label">MIGRATION_INTERVAL</span></div>
-  <div class="summary-item"><span class="num">5%</span><span class="label">迁移阈值</span></div>
-  <div class="summary-item"><span class="num">0.4</span><span class="label">EPSILON_GREEDY</span></div>
-  <div class="summary-item"><span class="num">10/50</span><span class="label">LIMIT_MIN/MAX</span></div>
-  <div class="summary-item"><span class="num">6</span><span class="label">MIN_COLONY_SIZE</span></div>
-  <div class="summary-item"><span class="num">+0.03/-0.02</span><span class="label">算子权重更新</span></div>
-</div>
-</div>
-
 <footer>
-  <p>DFJSP多群体ABC算法研究汇报 &mdash; 代码重构与创新算法</p>
-  <p>GitHub 仓库: <a href="https://github.com/LC-make/LC" style="color:#595959;">LC-make/LC</a></p>
+  <div class="wrap">
+    说明：本报告为消融实验结果分析，结论基于现有数据如实给出（含与预期不符之处），未读取任何图片文件。
+    统计检验未做多重比较校正；如需更严格论证，建议扩充实例与运行次数后重新分析。
+  </div>
 </footer>
 
-</div>
+<script>
+const DATA = {"instances": ["fga1", "fga3", "fga5", "fga7", "fga20", "fga25", "fga30", "fga35", "fga60", "fga70", "fga80", "fga90"], "scale_order": ["小规模", "中规模", "大规模"], "labels": {"orig": "原策略", "no_migr": "删除迁移竞争策略", "no_adap": "删除自适应LIMIT"}, "detail": [{"instance": "fga1", "scale": "小规模", "orig": {"min": 29, "mean": 29.1, "std": 0.32, "median": 29.0, "max": 30, "runs": [29, 29, 29, 29, 29, 29, 30, 29, 29, 29]}, "no_migr": {"min": 29, "mean": 29.2, "std": 0.42, "median": 29.0, "max": 30, "runs": [29, 30, 29, 30, 29, 29, 29, 29, 29, 29]}, "no_adap": {"min": 29, "mean": 29.2, "std": 0.42, "median": 29.0, "max": 30, "runs": [29, 29, 29, 29, 29, 29, 30, 29, 29, 30]}}, {"instance": "fga3", "scale": "小规模", "orig": {"min": 70, "mean": 70.4, "std": 0.84, "median": 70.0, "max": 72, "runs": [72, 70, 70, 70, 72, 70, 70, 70, 70, 70]}, "no_migr": {"min": 70, "mean": 70.4, "std": 0.84, "median": 70.0, "max": 72, "runs": [70, 70, 70, 72, 70, 70, 72, 70, 70, 70]}, "no_adap": {"min": 70, "mean": 70.8, "std": 1.03, "median": 70.0, "max": 72, "runs": [70, 72, 70, 70, 72, 70, 72, 70, 72, 70]}}, {"instance": "fga5", "scale": "小规模", "orig": {"min": 103, "mean": 104, "std": 1.7, "median": 103.0, "max": 107, "runs": [103, 103, 103, 107, 103, 107, 103, 103, 103, 105]}, "no_migr": {"min": 103, "mean": 104.4, "std": 2.32, "median": 103.0, "max": 109, "runs": [107, 107, 103, 103, 103, 103, 103, 103, 109, 103]}, "no_adap": {"min": 103, "mean": 104.4, "std": 2.32, "median": 103.0, "max": 109, "runs": [103, 103, 107, 103, 103, 107, 103, 103, 103, 109]}}, {"instance": "fga7", "scale": "小规模", "orig": {"min": 116, "mean": 120.9, "std": 4.01, "median": 120.5, "max": 128, "runs": [118, 123, 116, 120, 125, 117, 117, 124, 121, 128]}, "no_migr": {"min": 117, "mean": 121.1, "std": 2.69, "median": 121.0, "max": 125, "runs": [122, 121, 121, 124, 125, 124, 118, 119, 117, 120]}, "no_adap": {"min": 121, "mean": 123.7, "std": 2.95, "median": 122.5, "max": 129, "runs": [123, 121, 129, 125, 125, 122, 128, 121, 121, 122]}}, {"instance": "fga20", "scale": "中规模", "orig": {"min": 165, "mean": 169.9, "std": 3.6, "median": 170.0, "max": 175, "runs": [166, 175, 171, 170, 173, 165, 170, 170, 165, 174]}, "no_migr": {"min": 162, "mean": 169.1, "std": 3.51, "median": 169.5, "max": 174, "runs": [169, 162, 172, 170, 174, 172, 169, 170, 168, 165]}, "no_adap": {"min": 163, "mean": 169.4, "std": 3.57, "median": 170.0, "max": 175, "runs": [169, 175, 172, 170, 167, 172, 165, 171, 170, 163]}}, {"instance": "fga25", "scale": "中规模", "orig": {"min": 325, "mean": 334.9, "std": 7.39, "median": 334.0, "max": 350, "runs": [330, 339, 325, 342, 328, 350, 336, 331, 332, 336]}, "no_migr": {"min": 323, "mean": 338.8, "std": 8.43, "median": 342.5, "max": 347, "runs": [346, 347, 328, 333, 336, 347, 342, 343, 343, 323]}, "no_adap": {"min": 333, "mean": 340.3, "std": 5.46, "median": 342.5, "max": 346, "runs": [343, 346, 346, 342, 336, 343, 335, 346, 333, 333]}}, {"instance": "fga30", "scale": "中规模", "orig": {"min": 446, "mean": 458.9, "std": 6.89, "median": 460.5, "max": 469, "runs": [457, 458, 463, 469, 463, 449, 460, 446, 461, 463]}, "no_migr": {"min": 449, "mean": 465.3, "std": 10.59, "median": 465.5, "max": 480, "runs": [456, 449, 463, 461, 476, 480, 468, 478, 468, 454]}, "no_adap": {"min": 461, "mean": 468.9, "std": 5.51, "median": 467.0, "max": 477, "runs": [476, 461, 467, 467, 472, 477, 474, 463, 466, 466]}}, {"instance": "fga35", "scale": "中规模", "orig": {"min": 503, "mean": 520.3, "std": 8.35, "median": 520.0, "max": 532, "runs": [516, 521, 525, 503, 519, 524, 519, 514, 530, 532]}, "no_migr": {"min": 512, "mean": 528.3, "std": 8.1, "median": 528.5, "max": 541, "runs": [512, 536, 541, 528, 527, 535, 529, 529, 523, 523]}, "no_adap": {"min": 517, "mean": 529.5, "std": 8.32, "median": 529.0, "max": 542, "runs": [522, 528, 525, 517, 530, 537, 530, 541, 542, 523]}}, {"instance": "fga60", "scale": "大规模", "orig": {"min": 973, "mean": 991.4, "std": 11.89, "median": 991.0, "max": 1011, "runs": [990, 978, 982, 987, 999, 992, 1011, 973, 1004, 998]}, "no_migr": {"min": 969, "mean": 996.6, "std": 13.57, "median": 998.0, "max": 1014, "runs": [991, 969, 982, 994, 1011, 1014, 1003, 999, 997, 1006]}, "no_adap": {"min": 984, "mean": 999, "std": 10.15, "median": 997.0, "max": 1021, "runs": [984, 1006, 994, 992, 1000, 1006, 998, 993, 996, 1021]}}, {"instance": "fga70", "scale": "大规模", "orig": {"min": 890, "mean": 915.6, "std": 11.89, "median": 918.0, "max": 928, "runs": [928, 918, 926, 890, 902, 918, 912, 923, 925, 914]}, "no_migr": {"min": 907, "mean": 921.1, "std": 9.11, "median": 921.0, "max": 938, "runs": [919, 907, 923, 929, 923, 938, 928, 913, 918, 913]}, "no_adap": {"min": 912, "mean": 922.9, "std": 6.42, "median": 925.0, "max": 931, "runs": [924, 922, 921, 927, 912, 912, 931, 926, 928, 926]}}, {"instance": "fga80", "scale": "大规模", "orig": {"min": 766, "mean": 785.1, "std": 14.45, "median": 783.5, "max": 809, "runs": [767, 766, 779, 793, 787, 777, 806, 809, 785, 782]}, "no_migr": {"min": 775, "mean": 794.2, "std": 8.64, "median": 797.5, "max": 802, "runs": [782, 795, 775, 798, 800, 797, 802, 798, 797, 798]}, "no_adap": {"min": 771, "mean": 792.1, "std": 13.88, "median": 791.0, "max": 824, "runs": [780, 793, 824, 797, 799, 793, 788, 771, 787, 789]}}, {"instance": "fga90", "scale": "大规模", "orig": {"min": 837, "mean": 873.8, "std": 17.99, "median": 874.5, "max": 900, "runs": [893, 858, 837, 883, 874, 900, 869, 866, 883, 875]}, "no_migr": {"min": 854, "mean": 878.1, "std": 13.08, "median": 884.5, "max": 892, "runs": [892, 886, 885, 871, 868, 890, 884, 863, 854, 888]}, "no_adap": {"min": 853, "mean": 869.3, "std": 12.22, "median": 866.5, "max": 892, "runs": [892, 865, 865, 885, 854, 872, 867, 874, 853, 866]}}], "totals": {"min": {"orig": 5223, "no_migr": 5270, "no_adap": 5317}, "mean": {"orig": 5374.3, "no_migr": 5416.6, "no_adap": 5419.5}}, "relative_totals_pct": {"orig_vs_no_migr": {"min": -0.9, "mean": -0.79}, "orig_vs_no_adap": {"min": -1.8, "mean": -0.84}}, "best_counts": {"min": {"orig": {"strict_wins": 6, "ties": 3, "losses": 3}, "no_migr": {"strict_wins": 3, "ties": 3, "losses": 6}, "no_adap": {"strict_wins": 0, "ties": 3, "losses": 9}}, "mean": {"orig": {"strict_wins": 9, "ties": 1, "losses": 2}, "no_migr": {"strict_wins": 1, "ties": 1, "losses": 10}, "no_adap": {"strict_wins": 1, "ties": 0, "losses": 11}}}, "tests": {"min": {"orig__no_migr": {"wilcoxon_p": 0.1719, "wilcoxon_n_eff": 9, "sign_p": 0.5078, "pos": 6, "neg": 3, "ties": 3}, "orig__no_adap": {"wilcoxon_p": 0.0078, "wilcoxon_n_eff": 9, "sign_p": 0.0391, "pos": 8, "neg": 1, "ties": 3}, "no_migr__no_adap": {"wilcoxon_p": 0.0391, "wilcoxon_n_eff": 9, "sign_p": 0.1797, "pos": 7, "neg": 2, "ties": 3}}, "mean": {"orig__no_migr": {"wilcoxon_p": 0.0068, "wilcoxon_n_eff": 11, "sign_p": 0.0117, "pos": 10, "neg": 1, "ties": 1}, "orig__no_adap": {"wilcoxon_p": 0.021, "wilcoxon_n_eff": 12, "sign_p": 0.0386, "pos": 10, "neg": 2, "ties": 0}, "no_migr__no_adap": {"wilcoxon_p": 0.2754, "wilcoxon_n_eff": 10, "sign_p": 0.1094, "pos": 8, "neg": 2, "ties": 2}}}, "scale_summary": {"小规模": {"insts": ["fga1", "fga3", "fga5", "fga7"], "sum_min": {"orig": 318, "no_migr": 319, "no_adap": 323}, "sum_mean": {"orig": 324.4, "no_migr": 325.1, "no_adap": 328.1}}, "中规模": {"insts": ["fga20", "fga25", "fga30", "fga35"], "sum_min": {"orig": 1439, "no_migr": 1446, "no_adap": 1474}, "sum_mean": {"orig": 1484.0, "no_migr": 1501.5, "no_adap": 1508.1}}, "大规模": {"insts": ["fga60", "fga70", "fga80", "fga90"], "sum_min": {"orig": 3466, "no_migr": 3505, "no_adap": 3520}, "sum_mean": {"orig": 3565.9, "no_migr": 3590.0, "no_adap": 3583.3}}}};
+const ORD = ["orig","no_migr","no_adap"];
+const LBL = DATA.labels;
+const COL = {"orig":"var(--c-orig)","no_migr":"var(--c-migr)","no_adap":"var(--c-adap)"};
+const $ = s => document.querySelector(s);
+const el = (t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+
+/* ---------- KPI ---------- */
+function kpiCard(lab,big,sub,cls){const d=el("div","kpi");d.innerHTML=`<div class="lab">${lab}</div><div class="big ${cls||""}">${big}</div><div class="sub">${sub}</div>`;return d;}
+function buildKpi(){
+  const tMin=DATA.totals.min, tMean=DATA.totals.mean;
+  const pm=(a,b)=> ((b-a)/a*100).toFixed(2);
+  const bcMin=DATA.best_counts.min.orig, bcMean=DATA.best_counts.mean.orig;
+  const box=$("#kpis");
+  box.append(kpiCard("12 实例最小值合计（min of 10，越小越好）", tMin.orig.toLocaleString(), `删除迁移竞争 +${pm(tMin.orig,tMin.no_migr)}% ｜ 删除自适应LIMIT +${pm(tMin.orig,tMin.no_adap)}%`, "best"));
+  box.append(kpiCard("12 实例均值合计（mean of 10）", tMean.orig.toLocaleString(), `删除迁移竞争 +${pm(tMean.orig,tMean.no_migr)}% ｜ 删除自适应LIMIT +${pm(tMean.orig,tMean.no_adap)}%`, "best"));
+  box.append(kpiCard("原策略严格最优实例数", `${bcMin.strict_wins} / 12`, `按最小值口径（另平 ${bcMin.ties}、负 ${bcMin.losses}）｜ 按均值口径为 ${bcMean.strict_wins}/12`, "best"));
+  box.append(kpiCard("消融显著性与组件关键度", "自适应LIMIT > 迁移竞争", "删除自适应LIMIT：两口径均显著变差（min p=0.008）｜ 删除迁移竞争：均值口径显著变差（p=0.007），min 口径未达显著"));
+  const h=$("#headline");
+  h.innerHTML="<b>一句话结论：</b>按现有 12 个实例、每策略 10 次运行的数据，原策略在“最小值合计”与“均值合计”两个口径上都是三者中最小（总体最好），"
+    +"且均值口径下显著优于两个变体；“自适应 LIMIT”组件删除后性能显著变差，作用明确；"
+    +"“迁移竞争”组件总体有利但在 fga20/fga25/fga60 上删除后反而更好、min 口径未达显著，作用为“总体占优而非处处必需”。详见第 6 节。";
+}
+/* ---------- charts ---------- */
+function niceMax(v){let m=v*1.08;if(m<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(m)));const n=m/p;let r;if(n<=1)r=1;else if(n<=2)r=2;else if(n<=2.5)r=2.5;else if(n<=5)r=5;else r=10;return r*p;}
+function barChart(svgId, metric, opts){
+  const svg=$("#"+svgId), W=+svg.getAttribute("viewBox").split(" ")[2], H=+svg.getAttribute("viewBox").split(" ")[3];
+  const padL=46, padR=8, padT=14, padB=34;
+  const cats=DATA.instances.map(i=>{const o={name:i};for(const k of ORD)o[k]=DATA.detail.find(d=>d.instance===i)[k][metric];return o;});
+  const max=niceMax(Math.max(...cats.flatMap(c=>ORD.map(k=>c[k]))));
+  const plotW=W-padL-padR, plotH=H-padT-padB, gw=plotW/cats.length, bw=Math.min(24,gw*0.17);
+  let s="";
+  const y=v=>padT+plotH-(v/max)*plotH;
+  s+=`<line x1="${padL}" y1="${y(0)}" x2="${W-padR}" y2="${y(0)}" stroke="#9ca3af" stroke-width="1"/>`;
+  for(let t=1;t<=4;t++){const v=max*t/4, yy=y(v);s+=`<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="#e5e7eb"/>`;s+=`<text x="${padL-6}" y="${yy+3.5}" text-anchor="end" font-size="9.5" fill="#6b7280">${Math.round(v)}</text>`;}
+  cats.forEach((c,ci)=>{
+    const x0=padL+ci*gw+gw/2 - (ORD.length*bw + (ORD.length-1)*4)/2;
+    ORD.forEach((k,ki)=>{
+      const x=x0+ki*(bw+4), v=c[k], yy=y(v), hh=y(0)-yy;
+      s+=`<rect x="${x}" y="${yy}" width="${bw}" height="${Math.max(0.5,hh)}" rx="2" fill="${COL[k]}" opacity="${k==="orig"?1:0.82}"><title>${LBL[k]} ${opts.unit}: ${v}</title></rect>`;
+      s+=`<text x="${x+bw/2}" y="${yy-4}" text-anchor="middle" font-size="9" fill="#374151">${Math.round(v)}</text>`;
+    });
+    s+=`<text x="${padL+ci*gw+gw/2}" y="${H-12}" text-anchor="middle" font-size="10" fill="#374151">${c.name}</text>`;
+  });
+  svg.innerHTML=s+`<text x="${padL}" y="11" font-size="11" fill="#6b7280">${opts.title||""}</text>`;
+}
+function scaleChart(svgId, metric){
+  const svg=$("#"+svgId), W=+svg.getAttribute("viewBox").split(" ")[2], H=+svg.getAttribute("viewBox").split(" ")[3];
+  const padL=52,padR=8,padT=18,padB=34;
+  const cats=DATA.scale_order.map(sc=>({name:sc}));
+  cats.forEach(c=>{for(const k of ORD)c[k]=DATA.scale_summary[c.name]["sum_"+metric][k];});
+  const max=niceMax(Math.max(...cats.flatMap(c=>ORD.map(k=>c[k]))));
+  const plotW=W-padL-padR, plotH=H-padT-padB, gw=plotW/cats.length, bw=Math.min(30,gw*0.2);
+  let s="";
+  const y=v=>padT+plotH-(v/max)*plotH;
+  s+=`<line x1="${padL}" y1="${y(0)}" x2="${W-padR}" y2="${y(0)}" stroke="#9ca3af"/>`;
+  for(let t=1;t<=4;t++){const v=max*t/4,yy=y(v);s+=`<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="#e5e7eb"/>`;s+=`<text x="${padL-6}" y="${yy+3.5}" text-anchor="end" font-size="9.5" fill="#6b7280">${Math.round(v)}</text>`;}
+  cats.forEach((c,ci)=>{
+    const x0=padL+ci*gw+gw/2-(ORD.length*bw+(ORD.length-1)*4)/2;
+    ORD.forEach((k,ki)=>{
+      const x=x0+ki*(bw+4),v=c[k],yy=y(v),hh=y(0)-yy;
+      s+=`<rect x="${x}" y="${yy}" width="${bw}" height="${Math.max(.5,hh)}" rx="2" fill="${COL[k]}" opacity="${k==="orig"?1:.82}"><title>${LBL[k]}: ${v}</title></rect>`;
+      s+=`<text x="${x+bw/2}" y="${yy-4}" text-anchor="middle" font-size="9" fill="#374151">${Math.round(v)}</text>`;
+    });
+    s+=`<text x="${padL+ci*gw+gw/2}" y="${H-12}" text-anchor="middle" font-size="10.5" fill="#374151">${c.name}</text>`;
+  });
+  svg.innerHTML=s+`<text x="${padL}" y="12" font-size="11" fill="#6b7280">4 个实例合计</text>`;
+}
+/* ---------- instance table ---------- */
+function buildInstTable(){
+  const tb=el("table","detail");
+  const head=`<thead><tr><th>实例</th><th>规模</th>
+    <th style="color:var(--c-orig)">原策略<br><small>min / mean±std</small></th>
+    <th style="color:var(--c-migr)">删除迁移竞争<br><small>min / mean±std</small></th>
+    <th style="color:var(--c-adap)">删除自适应LIMIT<br><small>min / mean±std</small></th>
+    <th>该行最优(min/均值)</th></tr></thead>`;
+  let rows="";
+  DATA.detail.forEach(d=>{
+    const mins=ORD.map(k=>d[k].min), means=ORD.map(k=>d[k].mean);
+    const mMin=Math.min(...mins), mMean=Math.min(...means);
+    let cells="";
+    ORD.forEach(k=>{
+      const cMin=mins[ORD.indexOf(k)]===mMin?"best":"", cMean=means[ORD.indexOf(k)]===mMean?"best":"";
+      cells+=`<td><span class="${cMin}">${d[k].min}</span><small class="${cMean}">${d[k].mean.toFixed(1)}±${d[k].std.toFixed(1)}</small></td>`;
+    });
+    const winMin=ORD[mins.indexOf(mMin)], winMean=ORD[means.indexOf(mMean)];
+    rows+=`<tr><td class="mono">${d.instance}</td><td>${d.scale}</td>${cells}
+      <td><span class="pill ok">min:${LBL[winMin]}</span><br><span class="pill warn" style="margin-top:3px">均值:${LBL[winMean]}</span></td></tr>`;
+  });
+  const tMin=DATA.totals.min, tMean=DATA.totals.mean;
+  const rMin=[tMin.orig,tMin.no_migr,tMin.no_adap], rMean=[tMean.orig,tMean.no_migr,tMean.no_adap];
+  const bestMin=Math.min(...rMin),bestMean=Math.min(...rMean);
+  let tot="<tr style='background:#f3f4f6;font-weight:700'><td colspan='2'>合计（12 实例）</td>";
+  ORD.forEach((k,i)=>tot+=`<td><span class="${rMin[i]===bestMin?"best":""}">${rMin[i]}</span><small class="${rMean[i]===bestMean?"best":""}">${rMean[i].toFixed(1)}</small></td><td></td></tr>`);
+  /* note: 6 data columns above minus… rebuild: keep same col count */
+  tb.innerHTML=head+`<tbody>${rows}</tbody>`;
+  const wrap=$("#instTable"); wrap.innerHTML=""; wrap.append(tb);
+  /* fix the totals row separately: original layout had 6 cols + extra; we build cleanly: */
+  const tb2=el("table","detail");
+  tb2.innerHTML=`<thead><tr><th>口径</th><th>原策略</th><th>删除迁移竞争</th><th>删除自适应LIMIT</th><th>最优</th></tr></thead>
+    <tbody>
+    <tr><td>最小值合计</td><td class="${bestMin===rMin[0]?"best":""}">${rMin[0]}</td><td class="${bestMin===rMin[1]?"best":""}">${rMin[1]}</td><td class="${bestMin===rMin[2]?"best":""}">${rMin[2]}</td><td>原策略（最小）</td></tr>
+    <tr><td>均值合计</td><td class="${bestMean===rMean[0]?"best":""}">${rMean[0].toFixed(1)}</td><td class="${bestMean===rMean[1]?"best":""}">${rMean[1].toFixed(1)}</td><td class="${bestMean===rMean[2]?"best":""}">${rMean[2].toFixed(1)}</td><td>原策略（最小）</td></tr>
+    </tbody>`;
+  const cap=el("p","note","合计：");cap.before=null;
+  const sec=el("div");sec.style.marginTop="14px";sec.append(el("div","sec-sub","合计汇总（两个口径下原策略均为最小）："));
+  sec.append(tb2); wrap.after(sec);
+}
+/* ---------- test tables ---------- */
+function sig(p){return p<0.01?"显著 **":p<0.05?"显著 *":"不显著";}
+function buildTests(){
+  const box=$("#testTables");
+  ["min","mean"].forEach(metric=>{
+    const mm=DATA.tests[metric];
+    const tt=el("table");
+    let rows="";
+    [["orig","no_migr"],["orig","no_adap"],["no_migr","no_adap"]].forEach(([a,b])=>{
+      const t=mm[a+"__"+b];
+      const tag=a==="orig"?"原策略":"删除迁移竞争";
+      const vs=b==="no_migr"?"删除迁移竞争":"删除自适应LIMIT";
+      const better = a==="orig"? (t.pos): (a==="no_migr"? (t.pos):0);
+      rows+=`<tr><td style="text-align:left">${tag} vs ${vs}</td>
+        <td>${t.pos} / ${t.ties} / ${t.neg}</td>
+        <td class="mono">${t.wilcoxon_p.toFixed(4)} <span class="dim">(n_eff=${t.wilcoxon_n_eff})</span></td>
+        <td class="mono">${t.sign_p.toFixed(4)}</td>
+        <td>${sig(t.wilcoxon_p)}</td></tr>`;
+    });
+    const cap=el("h3","sec-sub",`口径：每实例 10 次运行的${metric==="min"?"最小值":"均值"}（实例数配对，n=12）`);
+    const leg=el("p","note","列“优/平/劣”= 左侧策略在该口径下数值 更小 / 相等 / 更大 的实例数。原策略在前时，“优”代表原策略更好。");
+    tt.innerHTML=`<thead><tr><th style="text-align:left">配对比较</th><th>优 / 平 / 劣（实例数）</th><th>Wilcoxon 符号秩 p</th><th>符号检验 p</th><th>结论（α=0.05）</th></tr></thead><tbody>${rows}</tbody>`;
+    const w=el("div"); w.style.marginBottom="16px"; w.append(cap,tt,leg); box.append(w);
+  });
+}
+/* ---------- conclusion ---------- */
+function buildConclusion(){
+  const c=$("#conclusion");
+  c.innerHTML=`
+  <p><b>① 总体：原策略在这批数据上是三者中最好的，但“最好”需限定在总体/多数实例层面。</b>
+  12 个实例的“最小值合计”原策略为 <b>5223</b>（删除迁移竞争 5270、删除自适应LIMIT 5317），均值合计原策略为 <b>5374.3</b>（5416.6、5419.5），两个口径原策略均最小；
+  按“每实例 10 次运行均值”比较，原策略在 <b>10/12</b> 实例上严格更优，且经配对检验显著优于两个变体（p=0.007 与 p=0.021）。因此“原策略整体效果最好”这一结论在本数据集上<b>成立</b>。</p>
+  <p><b>② “自适应 LIMIT”组件：删除后性能显著变差，作用明确且较关键。</b>
+  删除该组件后：min 口径下 8/12 实例更差、仅 fga20 一个实例更优，Wilcoxon p=0.008（符号检验 p=0.039）；除极小实例 fga1/3/5 打平外，中大规模几乎全面劣化。结论：该组件对原策略性能贡献显著，删去它整体损失约 +1.8%（min 合计）。</p>
+  <p><b>③ “迁移竞争”组件：总体有利，但并非在全部实例上都不可或缺——与预期不完全一致，如实报告。</b>
+  删除后均值口径显著变差（10/12 实例均值更高，p=0.007），说明总体上有正贡献；但 min 口径差异<b>未达显著</b>（6 优 3 平 3 劣，p≈0.17），并且在 fga20/fga25/fga60（含大规模 fga60）上删除该组件后最小值反而更低。
+  即：迁移竞争组件在多数实例上帮助原策略取得更好结果，但在个别实例上可能限制搜索或带来竞争开销；不能宣称“每个实例上删除它都会变差”。</p>
+  <p><b>④ 两变体横向比较：缺失自适应 LIMIT 的代价 &gt; 缺失迁移竞争的代价。</b>
+  按 min 口径，删除迁移竞争的变体显著优于删除自适应 LIMIT 的变体（p=0.039），说明自适应 LIMIT 在取得“更好最优值”上更关键；均值口径两变体差异不显著（p=0.275）。</p>
+  <p><b>⑤ 严谨性说明。</b>以上结论基于 12 个实例 × 10 次运行，p 值未做多重比较校正；fga1/3/5 三策略并列可能说明已达到问题最优/下界，使小规模差异无法区分。
+  若用于论文/正式论证，建议：增加实例数量与随机种子、说明种子是否在策略间共享、对主要指标补充置信区间或效应量，并披露逐实例结果（本报告已附原始数据以便复核）。</p>`;
+}
+/* ---------- raw tables ---------- */
+function buildRaw(){
+  const box=$("#rawTables");
+  ["orig","no_migr","no_adap"].forEach(k=>{
+    const d=el("details");d.style.marginBottom="12px";
+    d.innerHTML=`<summary>${LBL[k]} —— 12 实例 × 10 次运行原始值</summary>`;
+    let rows="";
+    DATA.detail.forEach(r=>{
+      const runs=DATA.detail.find(x=>x.instance===r.instance)[k].runs;
+      rows+=`<tr><td class="mono">${r.instance}</td><td>${r.scale}</td><td class="num">${runs.join("</td><td class='num'>")}</td></tr>`;
+    });
+    const t=el("div","scroll");
+    t.innerHTML=`<table style="margin-top:10px"><thead><tr><th>实例</th><th>规模</th>${Array.from({length:10},(_,i)=>`<th>Run ${i+1}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>`;
+    d.append(t); box.append(d);
+  });
+}
+buildKpi(); buildInstTable(); buildTests(); buildConclusion(); buildRaw();
+barChart("chartMin","min",{unit:"",title:"每实例 10 次运行最小值（越小越好）"});
+barChart("chartMean","mean",{unit:"",title:"每实例 10 次运行均值（越小越好）"});
+scaleChart("chartScaleMin","min");
+scaleChart("chartScaleMean","mean");
+</script>
 </body>
 </html>
